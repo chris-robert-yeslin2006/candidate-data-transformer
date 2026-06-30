@@ -1,0 +1,7 @@
+{
+  "fields": {
+    "full_name": "name.display_name",
+    "email": "contact.emails[0].value",
+    "skills": "skills[*].name"
+  }
+}

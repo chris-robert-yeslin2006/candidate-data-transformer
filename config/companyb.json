@@ -1,0 +1,8 @@
+{
+  "fields": {
+    "candidate_name": "name.display_name",
+    "contact_email": "contact.emails[0].value",
+    "contact_phone": "contact.phones[0].value",
+    "work_history": "experience"
+  }
+}

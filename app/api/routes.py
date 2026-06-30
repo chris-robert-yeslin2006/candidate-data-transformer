@@ -99,13 +99,13 @@ async def transform(
     proj_config = None
     if projection_config:
         try:
-            proj_config = json.loads(projection_config)
-        except json.JSONDecodeError:
+            proj_config = _resolve_projection_config(projection_config)
+        except ValueError as exc:
             return JSONResponse(
                 status_code=400,
                 content={
                     "error": "Invalid projection_config",
-                    "detail": "projection_config must be valid JSON.",
+                    "detail": str(exc),
                 },
             )
 
@@ -193,10 +193,23 @@ async def transform_json(
         for i, src in enumerate(sources)
     ]
 
+    proj_config = None
+    if "projection_config" in body:
+        try:
+            proj_config = _resolve_projection_config(body.get("projection_config"))
+        except ValueError as exc:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": "Invalid projection_config",
+                    "detail": str(exc),
+                },
+            )
+
     try:
         result = pipeline_service.process(
             files=file_descriptors,
-            projection_config=body.get("projection_config"),
+            projection_config=proj_config,
             validation_schema=body.get("validation_schema"),
         )
         return JSONResponse(
@@ -234,3 +247,37 @@ def _detect_source_type(filename: str) -> str:
         "md": SourceType.TXT_NOTES,
     }
     return str(extension_map.get(ext, SourceType.CSV))
+
+
+def _resolve_projection_config(projection_config: Any) -> dict[str, Any] | None:
+    """
+    Resolve projection configuration as inline JSON or template name.
+    """
+    if not projection_config:
+        return None
+
+    if isinstance(projection_config, dict):
+        return projection_config
+
+    if isinstance(projection_config, str):
+        # 1. Try to parse as inline JSON
+        try:
+            return json.loads(projection_config)
+        except json.JSONDecodeError:
+            # 2. Try to load from root config/ folder
+            import os
+            clean_name = os.path.basename(projection_config).strip().lower()
+            if not clean_name.endswith(".json"):
+                clean_name = f"{clean_name}.json"
+            
+            template_path = os.path.join("config", clean_name)
+            if os.path.exists(template_path):
+                try:
+                    with open(template_path, "r") as f:
+                        return json.load(f)
+                except Exception as exc:
+                    logger.error("Failed to read template file %s: %s", template_path, exc)
+            
+            raise ValueError(f"Invalid projection_config: Not a valid JSON or template name '{projection_config}'.")
+
+    return None

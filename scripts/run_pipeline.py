@@ -79,8 +79,18 @@ def main():
     # Load configs
     proj_config = None
     if args.projection:
-        with open(args.projection, "r") as f:
-            proj_config = json.load(f)
+        clean_name = args.projection.strip().lower()
+        template_path = os.path.join("config", f"{clean_name}.json")
+        if not clean_name.endswith(".json") and os.path.exists(template_path):
+            print(f"Loading template from: {template_path}")
+            with open(template_path, "r") as f:
+                proj_config = json.load(f)
+        elif os.path.exists(args.projection):
+            with open(args.projection, "r") as f:
+                proj_config = json.load(f)
+        else:
+            print(f"Error: Projection file or template not found: {args.projection}", file=sys.stderr)
+            sys.exit(1)
             
     val_schema = None
     if args.validation:
