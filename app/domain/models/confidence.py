@@ -1,27 +1,31 @@
 """
-ConfidenceScore — tracks data quality at field and record level.
+Confidence score model.
 
-Attached to every CanonicalCandidate to communicate reliability
-to downstream consumers. Baseline scores come from source type;
-refined scores incorporate cross-source agreement and merge quality.
-
-TODO: Implement scoring logic in Phase 9 / Phase 12.
+Tracks data quality at the field and record level. Attached
+to candidate data to communicate reliability to downstream
+consumers. Baseline scores are source-based; refined scores
+incorporate cross-source agreement and merge quality.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
-class ConfidenceScore(BaseModel):
+class Confidence(BaseModel):
     """
-    Data quality score for a candidate record.
+    Data quality confidence score.
+
+    Provides a quantitative measure of data reliability at
+    both the record level and per-field granularity. The
+    ``factors`` dictionary gives human-readable reasons
+    for the score.
 
     Attributes:
         overall: Record-level confidence (0.0 – 1.0).
-        fields: Per-field confidence scores keyed by field name.
-        factors: Human-readable map of contributing factors
+        fields: Per-field confidence scores keyed by field path.
+        factors: Human-readable factors contributing to the score
                  (e.g. {"source": "csv", "agreement": "high"}).
     """
 
-    overall: float = 0.0
+    overall: float = Field(default=0.0, ge=0.0, le=1.0)
     fields: dict[str, float] = {}
     factors: dict[str, str] = {}

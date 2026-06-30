@@ -2,22 +2,56 @@
 Domain layer — enterprise business rules.
 
 Contains the canonical data model (CanonicalCandidate), value objects
-(Experience, Education, ConfidenceScore, Provenance), and domain
-services. No framework, I/O, or infrastructure imports here.
+(PersonName, Email, Phone, Skill, Location, SocialLink, PartialDate),
+entities (Experience, Education, Certification, Project, Organization),
+and metadata types (Provenance, Provenanced, Confidence,
+ProcessingMetadata, ProcessingWarning).
+
+No framework, I/O, or infrastructure imports here.
 """
 
 from app.domain.models import (
     CanonicalCandidate,
-    ConfidenceScore,
+    Certification,
+    Confidence,
+    ContactInformation,
     Education,
+    Email,
     Experience,
+    Location,
+    Organization,
+    PartialDate,
+    PersonName,
+    Phone,
+    ProcessingMetadata,
+    ProcessingWarning,
+    Project,
     Provenance,
+    Provenanced,
+    Skill,
+    SocialLink,
+    SocialPlatform,
 )
 
 __all__ = [
     "CanonicalCandidate",
-    "ConfidenceScore",
+    "Certification",
+    "Confidence",
+    "ContactInformation",
     "Education",
+    "Email",
     "Experience",
+    "Location",
+    "Organization",
+    "PartialDate",
+    "PersonName",
+    "Phone",
+    "ProcessingMetadata",
+    "ProcessingWarning",
+    "Project",
     "Provenance",
+    "Provenanced",
+    "Skill",
+    "SocialLink",
+    "SocialPlatform",
 ]
