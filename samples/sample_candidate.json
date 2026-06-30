@@ -1,0 +1,27 @@
+{
+    "first_name": "John",
+    "last_name": "Doe",
+    "email": "john.doe@example.com",
+    "phone": "+1-555-123-4567",
+    "skills": ["Python", "JavaScript", "React", "PostgreSQL"],
+    "summary": "Full-stack software engineer with expertise in Python and JavaScript.",
+    "work_experience": [
+        {
+            "title": "Senior Software Engineer",
+            "company": "Acme Corp",
+            "description": "Led development of microservices architecture"
+        },
+        {
+            "title": "Software Engineer",
+            "company": "StartupXYZ",
+            "description": "Built React frontend applications"
+        }
+    ],
+    "education": [
+        {
+            "institution": "MIT",
+            "degree": "B.S.",
+            "field": "Computer Science"
+        }
+    ]
+}

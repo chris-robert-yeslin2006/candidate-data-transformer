@@ -1,3 +1,15 @@
-"""Output schema definitions and projection configurations."""
+"""
+Projection and validation layer.
 
-# TODO: Implement output schemas in Phase 13 / Phase 14
+Provides the ProjectionService for transforming canonical candidate
+data into client-specific output schemas, and the ValidationService
+for validating projected output against target schemas.
+"""
+
+from app.projections.projection_service import ProjectionService
+from app.projections.validation_service import ValidationService
+
+__all__ = [
+    "ProjectionService",
+    "ValidationService",
+]

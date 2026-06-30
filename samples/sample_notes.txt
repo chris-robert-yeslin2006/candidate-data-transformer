@@ -1,0 +1,10 @@
+Recruiter Notes - John Doe
+
+Interviewed John Doe on 2024-03-15. Very strong candidate.
+He mentioned 10 years experience in Python and JavaScript.
+Currently working at Acme Corp as a Senior Engineer.
+Has a CS degree from MIT.
+Contact: john.doe@example.com, phone (555) 123-4567.
+Skills: Python, JavaScript, React, Node.js, PostgreSQL, Docker.
+He seems very interested in the role and can start in 2 weeks.
+Strong communication skills and leadership potential.

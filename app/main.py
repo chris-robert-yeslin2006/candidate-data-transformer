@@ -19,8 +19,13 @@ from app.api.routes import router
 from app.clients.gemini import GeminiClient
 from app.config.settings import get_settings
 from app.core.logging import configure_logging
+from app.normalizers.normalization_service import NormalizationService
 from app.parsers import default_registry
 from app.parsers.registry import ParserFactory
+from app.projections.projection_service import ProjectionService
+from app.projections.validation_service import ValidationService
+from app.services.confidence_service import ConfidenceService
+from app.services.merge_engine import MergeEngine
 from app.services.pipeline_service import PipelineService
 
 logger = logging.getLogger(__name__)
@@ -57,8 +62,22 @@ def create_app() -> FastAPI:
         default_ai_client=ai_client,
     )
 
-    # Create the pipeline service
-    pipeline_service = PipelineService(parser_factory=parser_factory)
+    # Create all pipeline services
+    normalization_service = NormalizationService()
+    confidence_service = ConfidenceService()
+    merge_engine = MergeEngine()
+    projection_service = ProjectionService()
+    validation_service = ValidationService()
+
+    # Create the pipeline service with all dependencies
+    pipeline_service = PipelineService(
+        parser_factory=parser_factory,
+        normalization_service=normalization_service,
+        confidence_service=confidence_service,
+        merge_engine=merge_engine,
+        projection_service=projection_service,
+        validation_service=validation_service,
+    )
 
     # --- FastAPI application ---
 
