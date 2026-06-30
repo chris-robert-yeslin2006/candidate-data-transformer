@@ -221,6 +221,90 @@ Catches projection misconfiguration, missing required fields, and type mismatche
 
 ---
 
+## Future Architecture: Decoupled Ingestion Pipeline
+
+The current parser architecture is monolithic — each parser reads a format, interprets columns, populates the candidate model, generates warnings, and attaches provenance in a single `parse()` method. For scale, this should be split into two distinct layers: **Ingestion** (format-specific reading) and **Mapping** (format-agnostic transformation).
+
+### Target Architecture
+
+```
+                    INPUTS
+                       │
+                       ▼
+            ┌──────────────────┐
+            │   INGESTION      │  ← Format-specific readers
+            │   LAYER          │     (CSVReader, TSVReader,
+            │                  │      ExcelReader, GoogleSheetsReader)
+            └────────┬─────────┘
+                     │
+                     ▼
+            ┌──────────────────┐
+            │   INTERMEDIATE   │  ← Common Record Format
+            │   RECORD FORMAT  │     (dict with str keys + str values)
+            └────────┬─────────┘
+                     │
+                     ▼
+            ┌──────────────────┐
+            │   CANDIDATE      │  ← Unified transformation
+            │   MAPPER         │     (reused across all tabular sources)
+            └────────┬─────────┘
+                     │
+                     ▼
+              CanonicalCandidate
+```
+
+### Ingestion Layer (Format Specific)
+
+| Reader | Input | Dependencies |
+|---|---|---|
+| `CSVReader` | `str` or `bytes` | `csv` (stdlib) |
+| `TSVReader` | `str` or `bytes` | `csv` with `delimiter="\t"` |
+| `ExcelReader` | `bytes` (`.xlsx`) | `openpyxl` |
+| `GoogleSheetsReader` | API credentials + spreadsheet ID | `google-api-python-client` |
+
+Every reader implements a common interface:
+
+```python
+class Reader(ABC):
+    @abstractmethod
+    def read(self, raw_data: Any, **kwargs: Any) -> Iterator[dict[str, str]]:
+        ...
+```
+
+The reader yields rows as `dict[str, str]` — headers as keys, cell values as strings. This **Common Record Format** is the seam between ingestion and mapping.
+
+### Transformation Layer (CandidateMapper)
+
+The current `CsvParser`'s column-mapping logic (`_build_header_map`, `_row_to_candidate`, `_set_nested_field`, `_parse_skill_list`, `_accumulate_experience`) moves into a reusable `CandidateMapper` class:
+
+```python
+class CandidateMapper:
+    def __init__(self, column_mapping: dict[str, str | ColumnRule]) -> None: ...
+    def map_row(self, row: dict[str, str]) -> CanonicalCandidate: ...
+    def map_rows(self, rows: list[dict[str, str]]) -> list[CanonicalCandidate]: ...
+```
+
+### Benefits
+
+- **Single responsibility**: Readers read; mappers transform. Each is testable in isolation.
+- **Provider agnostic**: Adding Excel or Google Sheets requires only a new Reader. The mapper never changes.
+- **Multi-row support**: Readers can yield any number of rows; the mapper processes each independently. (Current CSV parser silently drops rows after the first.)
+- **Reusable skill/experience logic**: `_parse_skill_list` and `_accumulate_experience` are baked into the mapper, not duplicated per format.
+
+### Migration Path
+
+1. Extract `CandidateMapper` class from `CsvParser` private methods (backward-compatible — `CsvParser` wraps the mapper internally).
+2. Create `CsvReader` implementing the `Reader` interface; `CsvParser.parse()` becomes `CandidateMapper.map_row(CsvReader.read(raw_data))`.
+3. Add `TSVReader` (trivial — parameterized delimiter).
+4. Add `ExcelReader` and `GoogleSheetsReader` as separate packages.
+5. Retire monolithic parser classes in favor of `Reader` + `Mapper` composition.
+
+### Tech Debt Backlog Entry
+
+See `TECH_DEBT.md` — Item #1: "Decouple Ingestion from Mapping."
+
+---
+
 ## GeminiClient
 
 ### Responsibility

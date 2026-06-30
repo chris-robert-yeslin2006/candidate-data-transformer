@@ -34,7 +34,19 @@
 
 ---
 
-## Phase 5 — ATS JSON Parser (Optional)
+## Phase 5 — Normalization Engine (Reader/Mapper Decoupling)
+
+- Extract `CandidateMapper` from `CsvParser` private methods
+- Define `Reader` abstract interface (`read(raw_data) -> Iterator[dict[str, str]]`)
+- Implement `CsvReader` and `TSVReader` as concrete readers
+- Adopt advanced column mapping schema with `required`, `type`, `default`, `transform` rules
+- Retire monolithic `CsvParser` in favor of `Reader(CsvReader) + Mapper(CandidateMapper)` composition
+- Write mapper and reader unit tests
+- Update registry to accept `Reader` classes
+
+---
+
+## Phase 6 — ATS JSON Parser (Optional)
 - Implement `AtsJsonParser`
 - Map structured JSON fields to canonical model
 - Handle missing/optional keys
@@ -42,7 +54,7 @@
 
 ---
 
-## Phase 6 — Gemini Client Interface
+## Phase 7 — Gemini Client Interface
 - Define `GeminiClient` abstract interface
 - Implement `RealGeminiClient` (API key from env)
 - Implement `MockGeminiClient` (deterministic fixtures)
@@ -50,7 +62,7 @@
 
 ---
 
-## Phase 7 — PDF Resume Parser
+## Phase 8 — PDF Resume Parser
 - Extract text from PDF using PyMuPDF
 - Pass text + extraction prompt to `GeminiClient`
 - Parse structured JSON response into `CanonicalCandidate`
@@ -59,7 +71,7 @@
 
 ---
 
-## Phase 8 — TXT Notes Parser
+## Phase 9 — TXT Notes Parser
 - Pass raw text + extraction prompt to `GeminiClient`
 - Parse structured JSON response into `CanonicalCandidate`
 - Handle extraction failures gracefully
@@ -67,7 +79,7 @@
 
 ---
 
-## Phase 9 — Baseline Confidence Service
+## Phase 10 — Baseline Confidence Service
 - Define baseline confidence rules per source type
 - Compute baseline scores immediately after parsing
 - Attach `ConfidenceScore` to `CanonicalCandidateWithMeta`
@@ -75,7 +87,7 @@
 
 ---
 
-## Phase 10 — Normalization Service
+## Phase 11 — Normalization Service
 - Implement phone normalizer (strip non-digits, format E.164)
 - Implement email normalizer (lowercase, trim whitespace)
 - Implement name normalizer (capitalization, trim)
@@ -84,7 +96,7 @@
 
 ---
 
-## Phase 11 — Merge Engine
+## Phase 12 — Merge Engine
 - Implement source priority rules
 - Implement conflict detection per field
 - Apply tiebreakers (source priority > baseline confidence > completeness > recency)
@@ -93,7 +105,7 @@
 
 ---
 
-## Phase 12 — Refined Confidence Service
+## Phase 13 — Refined Confidence Service
 - Recalculate confidence post-merge
 - Factors: cross-source agreement, completeness, extraction quality, normalization success, merge consistency
 - Compute field-level and record-level refined scores
@@ -101,7 +113,7 @@
 
 ---
 
-## Phase 13 — Projection Engine
+## Phase 14 — Projection Engine
 - Define projection configuration schema
 - Implement field mapping and transform logic
 - Support default values and computed fields
@@ -109,7 +121,7 @@
 
 ---
 
-## Phase 14 — Schema Validation
+## Phase 15 — Schema Validation
 - Define target schema as Pydantic model
 - Validate projected output before delivery
 - Return structured error messages on failure
@@ -117,7 +129,7 @@
 
 ---
 
-## Phase 15 — PipelineService
+## Phase 16 — PipelineService
 - Implement `PipelineService` orchestrator
 - Sequence: parse → baseline score → normalize → merge → refine → project → validate
 - Collect warnings from partial failures
@@ -126,7 +138,7 @@
 
 ---
 
-## Phase 16 — API Layer
+## Phase 17 — API Layer
 - Implement FastAPI application
 - Add upload endpoint (`POST /transform`)
 - Wire `PipelineService` as thin delegation
@@ -135,7 +147,7 @@
 
 ---
 
-## Phase 17 — Testing & Optimization
+## Phase 18 — Testing & Optimization
 - End-to-end pipeline tests with sample data
 - Performance profiling and optimisation
 - Error handling audit

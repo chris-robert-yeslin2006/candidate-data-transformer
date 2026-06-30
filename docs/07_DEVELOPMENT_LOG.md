@@ -30,7 +30,10 @@
 
 ## Day 3 — Structured Parsers
 
-- [ ] Implement `CsvParser`
+- [x] Implement `CsvParser` with `csv.DictReader`, default column mapping, skill delimiters
+- [x] Handle missing/empty values, unknown columns, malformed CSV, BOM, null bytes
+- [x] Generate `MISSING_COLUMN` / `UNKNOWN_COLUMN` warnings with provenance metadata
+- [x] Write 31 CSV parser unit tests (happy path, edge cases, skills, warnings, column mapping)
 - [ ] Implement `AtsJsonParser`
 - [ ] Map structured fields to canonical model
 - [ ] Handle missing/empty values
@@ -38,7 +41,18 @@
 
 ---
 
-## Day 4 — Gemini Integration
+## Day 4 — Reader/Mapper Decoupling & Column Mapping Schema
+
+- [ ] Extract `CandidateMapper` from `CsvParser` private methods
+- [ ] Define `Reader` abstract interface
+- [ ] Implement `CsvReader` and `TSVReader`
+- [ ] Implement `ColumnRule` Pydantic model for advanced mapping
+- [ ] Update parser registry for Reader/Mapper composition
+- [ ] Write mapper and reader unit tests
+
+---
+
+## Day 5 — Gemini Integration
 
 - [ ] Define `GeminiClient` abstract interface
 - [ ] Implement `RealGeminiClient`
@@ -50,7 +64,7 @@
 
 ---
 
-## Day 5 — Normalisation & Merge
+## Day 6 — Normalisation & Merge
 
 - [ ] Implement baseline confidence scoring
 - [ ] Implement phone normalizer
@@ -63,7 +77,7 @@
 
 ---
 
-## Day 6 — Refined Confidence & Projection
+## Day 7 — Refined Confidence & Projection
 
 - [ ] Implement refined confidence scoring
 - [ ] Factors: cross-source agreement, completeness, extraction quality
@@ -76,7 +90,7 @@
 
 ---
 
-## Day 7 — PipelineService & API
+## Day 8 — PipelineService & API
 
 - [ ] Implement `PipelineService` orchestrator
 - [ ] Wire full pipeline end-to-end
@@ -88,7 +102,7 @@
 
 ---
 
-## Day 8 — Finalization
+## Day 9 — Finalization
 
 - [ ] End-to-end pipeline tests with sample data
 - [ ] Performance profiling and optimisation

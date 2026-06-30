@@ -16,6 +16,7 @@ from typing import Any
 
 from app.clients.base import AiClient
 from app.domain.models import CanonicalCandidate
+from app.domain.models.provenance import SourceType
 from app.parsers.base import BaseParser
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,13 @@ class PdfResumeParser(BaseParser):
     TODO: Implement Gemini extraction call.
     TODO: Handle extraction failures gracefully (return partial data).
     """
+
+    source_type: SourceType = SourceType.PDF_RESUME
+    display_name: str = "PDF Resume Parser"
+    supported_extensions: list[str] = [".pdf"]
+    supported_mime_types: list[str] = ["application/pdf"]
+    requires_ai: bool = True
+    parser_version: str = "0.1.0"
 
     def __init__(self, ai_client: AiClient) -> None:
         """

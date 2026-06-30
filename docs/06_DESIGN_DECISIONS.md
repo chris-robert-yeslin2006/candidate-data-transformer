@@ -84,6 +84,20 @@ PowerPoint files are outside the assignment scope. Including `python-pptx` as a 
 
 ---
 
+---
+
+## Why Decouple Ingestion from Mapping?
+
+The current monolithic parser violates single responsibility — a single class reads raw bytes, interprets column headers, and populates the canonical model. Splitting into **Readers** (format-specific) and **CandidateMapper** (format-agnostic) makes each layer independently testable and allows adding new tabular formats (TSV, Excel, Google Sheets) without touching transformation logic. See the "Future Architecture" section in `ARCHITECTURE.md` for the full plan.
+
+---
+
+## Why a Rule-Based Column Mapping Schema?
+
+The current flat mapping (`dict[str, str]`) supports basic column renaming but cannot express validation rules, type coercion, or conditional transformations. A nested rule-based schema (see `TECH_DEBT.md` Item #2) adds `required`, `type`, `default`, and `transform` — enabling the same mapping configuration to serve both validation and transformation without code changes.
+
+---
+
 ## Why Confidence + Provenance as Metadata Rather Than Fields?
 
 Metadata is attached to, but separate from, business data. This keeps the canonical model clean — merge and projection logic operates on candidate data without caring about the metadata wrapper, while audit tools can inspect it.

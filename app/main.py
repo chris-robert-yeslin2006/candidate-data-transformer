@@ -2,19 +2,26 @@
 Application entry point.
 
 Creates and configures the FastAPI application, sets up logging,
-loads configuration, and registers route handlers.
+loads configuration, creates the parser factory, and wires
+dependencies via dependency injection.
 
 This module should remain thin — it wires the application together
-and starts the server.
+and starts the server. All business logic lives in domain services.
 """
+
+from __future__ import annotations
 
 import logging
 
 from fastapi import FastAPI
 
 from app.api.routes import router
+from app.clients.gemini import GeminiClient
 from app.config.settings import get_settings
 from app.core.logging import configure_logging
+from app.parsers import default_registry
+from app.parsers.registry import ParserFactory
+from app.services.pipeline_service import PipelineService
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +30,8 @@ def create_app() -> FastAPI:
     """
     Create and configure the FastAPI application.
 
-    Loads settings, configures logging, and registers route handlers.
+    Loads settings, configures logging, creates shared services,
+    wires dependencies, and registers route handlers.
     Called by the ASGI server (uvicorn) to instantiate the application.
 
     Returns:
@@ -31,6 +39,28 @@ def create_app() -> FastAPI:
     """
     settings = get_settings()
     configure_logging(settings.LOG_LEVEL)
+
+    # --- Service wiring (dependency injection) ---
+
+    # Create the AI client (no-op until API is implemented)
+    ai_client = None
+    if settings.GEMINI_API_KEY:
+        ai_client = GeminiClient(
+            api_key=settings.GEMINI_API_KEY,
+            model=settings.GEMINI_MODEL,
+        )
+
+    # Note: default_registry is already frozen after parser registration.
+    # The factory wraps a frozen registry — no runtime additions allowed.
+    parser_factory = ParserFactory(
+        registry=default_registry,
+        default_ai_client=ai_client,
+    )
+
+    # Create the pipeline service
+    pipeline_service = PipelineService(parser_factory=parser_factory)
+
+    # --- FastAPI application ---
 
     app = FastAPI(
         title="Candidate Data Transformer",
@@ -40,11 +70,16 @@ def create_app() -> FastAPI:
 
     app.include_router(router, prefix="/api/v1")
 
+    # Store shared services on the app state for route handlers
+    app.state.parser_factory = parser_factory
+    app.state.pipeline_service = pipeline_service
+
     logger.info(
-        "Application created (host=%s, port=%s, log_level=%s)",
+        "Application created (host=%s, port=%s, log_level=%s, parsers=%s)",
         settings.APP_HOST,
         settings.APP_PORT,
         settings.LOG_LEVEL,
+        [str(t) for t in parser_factory.supported_types],
     )
 
     return app

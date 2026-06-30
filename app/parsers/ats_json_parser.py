@@ -14,6 +14,7 @@ import logging
 from typing import Any
 
 from app.domain.models import CanonicalCandidate
+from app.domain.models.provenance import SourceType
 from app.parsers.base import BaseParser
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,13 @@ class AtsJsonParser(BaseParser):
     TODO: Add configurable key mapping support.
     TODO: Mark as optional — skipped if no ATS JSON sources exist.
     """
+
+    source_type: SourceType = SourceType.ATS_JSON
+    display_name: str = "ATS JSON Parser"
+    supported_extensions: list[str] = [".json"]
+    supported_mime_types: list[str] = ["application/json"]
+    requires_ai: bool = False
+    parser_version: str = "0.1.0"
 
     def parse(self, raw_data: str | bytes, **kwargs: Any) -> CanonicalCandidate:
         """
