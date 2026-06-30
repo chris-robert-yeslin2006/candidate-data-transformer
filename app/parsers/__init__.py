@@ -18,11 +18,20 @@ Future:
     registry is frozen. External parser modules can be loaded
     via entry points or a discovery mechanism and registered
     via ``default_registry.register()``.
+
+Reader / Mapper Architecture (Phase 5):
+    Tabular formats are now handled by two separate layers:
+    - Readers (CSVReader, TSVReader) handle format-specific I/O
+    - CandidateMapper handles format-agnostic field mapping
+    See csv_reader.py, csv_record.py, and candidate_mapper.py.
 """
 
 from app.parsers.ats_json_parser import AtsJsonParser
 from app.parsers.base import BaseParser
+from app.parsers.candidate_mapper import CandidateMapper
 from app.parsers.csv_parser import CsvParser
+from app.parsers.csv_reader import CSVReader
+from app.parsers.csv_record import CSVRecord
 from app.parsers.pdf_parser import PdfResumeParser
 from app.parsers.registry import ParserFactory, ParserRegistry
 from app.parsers.txt_parser import TxtNotesParser
@@ -41,6 +50,9 @@ default_registry.freeze()
 __all__ = [
     "AtsJsonParser",
     "BaseParser",
+    "CandidateMapper",
+    "CSVReader",
+    "CSVRecord",
     "CsvParser",
     "ParserFactory",
     "ParserRegistry",
