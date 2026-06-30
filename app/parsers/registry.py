@@ -221,8 +221,14 @@ class ParserFactory:
         """
         Create a parser instance with automatic dependency injection.
 
-        Injects the default AiClient into parsers that need it,
-        unless overridden by the caller.
+        Automatically injects the default AiClient into parsers that
+        require one, even if the client is None (the parser falls back
+        to placeholder extraction). Callers can override any dependency
+        via ``**overrides``.
+
+        This explicit injection ensures parsers always receive their
+        declared dependencies, making the system more robust when the
+        AI client is unavailable (CLI mode, testing, etc.).
 
         Future: This method will also accept a ParserContext and
         forward relevant fields (ai_client, config) to the parser.
@@ -237,8 +243,8 @@ class ParserFactory:
         parser_cls = self._registry.get(source_type)
         kwargs: dict[str, Any] = {}
 
-        # Inject default AiClient if the parser needs one
-        if self._default_ai_client is not None and _requires_ai_client(parser_cls):
+        # Inject AiClient if the parser needs one (even if None)
+        if _requires_ai_client(parser_cls):
             kwargs["ai_client"] = self._default_ai_client
 
         # Caller overrides take precedence

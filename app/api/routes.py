@@ -13,6 +13,7 @@ from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from app import __version__
+from app.api.schemas import ErrorDetailResponse, TransformJSONRequest, TransformResponse
 from app.domain.models.provenance import SourceType
 
 logger = logging.getLogger(__name__)
@@ -36,13 +37,49 @@ async def health_check() -> dict[str, str]:
     }
 
 
-@router.post("/transform")
+@router.post(
+    "/transform",
+    response_model=TransformResponse,
+    responses={
+        400: {"model": ErrorDetailResponse, "description": "Bad Request - invalid input, configuration or validation schema"},
+        500: {"model": ErrorDetailResponse, "description": "Internal Server Error - transformation pipeline processing failed"}
+    },
+    summary="Transform candidate data (Multipart)",
+    description=(
+        "Transform multi-source candidate data from uploaded files (CSV, JSON, PDF, TXT, MD) "
+        "using an optional projection config and validation schema."
+    ),
+)
 async def transform(
     request: Request,
-    files: list[UploadFile] = File(default=[]),
-    source_types: str = Form(default=""),
-    projection_config: str = Form(default=""),
-    validation_schema: str = Form(default=""),
+    files: list[UploadFile] = File(
+        default=[],
+        description="List of candidate resumes/data files to upload and transform. Supported formats: .csv, .json, .pdf, .txt, .md",
+    ),
+    source_types: str = Form(
+        default="",
+        description=(
+            "Comma-separated list of source type identifiers (one per file, e.g., 'csv,ats_json'). "
+            "Supported: 'csv', 'ats_json', 'pdf_resume', 'txt_notes'. If not provided, auto-detected from file extensions."
+        ),
+        examples=["csv,ats_json"],
+    ),
+    projection_config: str = Form(
+        default="",
+        description=(
+            "Optional JSON string defining a custom projection mapping, OR a predefined template filename "
+            "(e.g., 'companyb' or 'config/companyb.json')."
+        ),
+        examples=["companyb"],
+    ),
+    validation_schema: str = Form(
+        default="",
+        description=(
+            "Optional JSON string defining validation rules. "
+            "Format: {'required': ['field_name'], 'types': {'field_name': 'type_str'}}."
+        ),
+        examples=['{"required": ["full_name", "email"], "types": {"full_name": "string"}}'],
+    ),
 ) -> JSONResponse:
     """
     Transform candidate data from multiple sources.
@@ -144,40 +181,32 @@ async def transform(
         )
 
 
-@router.post("/transform/json")
+@router.post(
+    "/transform/json",
+    response_model=TransformResponse,
+    responses={
+        400: {"model": ErrorDetailResponse, "description": "Bad Request - invalid input, configuration or validation schema"},
+        500: {"model": ErrorDetailResponse, "description": "Internal Server Error - transformation pipeline processing failed"}
+    },
+    summary="Transform candidate data (JSON Body)",
+    description=(
+        "Transform multi-source candidate data provided inline in a JSON request body, "
+        "using an optional projection config and validation schema."
+    ),
+)
 async def transform_json(
     request: Request,
+    payload: TransformJSONRequest,
 ) -> JSONResponse:
     """
     Transform candidate data from a JSON request body.
 
     Alternative to the multipart form upload. Accepts a JSON body
     with inline source data.
-
-    Expected body:
-    {
-        "sources": [
-            {
-                "source_type": "csv",
-                "raw_data": "name,email\\nJohn,john@example.com",
-                "source_id": "candidates.csv"
-            }
-        ],
-        "projection_config": { ... },
-        "validation_schema": { ... }
-    }
     """
     pipeline_service = request.app.state.pipeline_service
 
-    try:
-        body = await request.json()
-    except Exception:
-        return JSONResponse(
-            status_code=400,
-            content={"error": "Invalid JSON body"},
-        )
-
-    sources = body.get("sources", [])
+    sources = payload.sources
     if not sources:
         return JSONResponse(
             status_code=400,
@@ -186,17 +215,17 @@ async def transform_json(
 
     file_descriptors = [
         {
-            "raw_data": src.get("raw_data", ""),
-            "source_type": src.get("source_type", "csv"),
-            "source_id": src.get("source_id", f"source_{i}"),
+            "raw_data": src.raw_data,
+            "source_type": src.source_type,
+            "source_id": src.source_id or f"source_{i}",
         }
         for i, src in enumerate(sources)
     ]
 
     proj_config = None
-    if "projection_config" in body:
+    if payload.projection_config is not None:
         try:
-            proj_config = _resolve_projection_config(body.get("projection_config"))
+            proj_config = _resolve_projection_config(payload.projection_config)
         except ValueError as exc:
             return JSONResponse(
                 status_code=400,
@@ -210,7 +239,7 @@ async def transform_json(
         result = pipeline_service.process(
             files=file_descriptors,
             projection_config=proj_config,
-            validation_schema=body.get("validation_schema"),
+            validation_schema=payload.validation_schema,
         )
         return JSONResponse(
             status_code=200,
@@ -225,6 +254,7 @@ async def transform_json(
                 "detail": str(exc),
             },
         )
+
 
 
 def _detect_source_type(filename: str) -> str:
@@ -281,3 +311,74 @@ def _resolve_projection_config(projection_config: Any) -> dict[str, Any] | None:
             raise ValueError(f"Invalid projection_config: Not a valid JSON or template name '{projection_config}'.")
 
     return None
+
+
+@router.get("/gui/samples")
+async def list_gui_samples() -> dict[str, Any]:
+    """
+    List names, contents, and autodetected source types of all files in samples/ directory.
+    """
+    import os
+    samples_dir = "samples"
+    samples_data = []
+
+    if os.path.exists(samples_dir):
+        for filename in os.listdir(samples_dir):
+            if filename == ".gitkeep":
+                continue
+            path = os.path.join(samples_dir, filename)
+            if os.path.isfile(path):
+                try:
+                    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+                    source_type = "csv"
+                    if ext == "json":
+                        source_type = "ats_json"
+                    elif ext in ("txt", "md"):
+                        source_type = "txt_notes"
+                    elif ext == "pdf":
+                        source_type = "pdf_resume"
+
+                    # For PDFs, send empty content so UI knows it's a binary file
+                    if ext == "pdf":
+                        content = ""
+                    else:
+                        with open(path, "r", encoding="utf-8") as f:
+                            content = f.read()
+
+                    samples_data.append({
+                        "name": filename,
+                        "content": content,
+                        "source_type": source_type
+                    })
+                except Exception as e:
+                    logger.error("Failed to read sample file %s: %s", filename, e)
+
+    return {"samples": samples_data}
+
+
+@router.get("/gui/templates")
+async def list_gui_templates() -> dict[str, Any]:
+    """
+    List names and JSON contents of all projection templates in config/ directory.
+    """
+    import os
+    config_dir = "config"
+    templates = []
+
+    if os.path.exists(config_dir):
+        for filename in os.listdir(config_dir):
+            if filename.endswith(".json"):
+                path = os.path.join(config_dir, filename)
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    templates.append({
+                        "name": filename.rsplit(".", 1)[0],
+                        "filename": filename,
+                        "content": data
+                    })
+                except Exception as e:
+                    logger.error("Failed to read template %s: %s", filename, e)
+
+    return {"templates": templates}
+

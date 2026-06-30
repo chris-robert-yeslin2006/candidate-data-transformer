@@ -16,8 +16,60 @@ from app.parsers import default_registry
 from app.services.pipeline_service import PipelineService
 from app.domain.models.provenance import SourceType
 
+CYAN = "\033[96m"
+GREEN = "\033[92m"
+YELLOW = "\033[93m"
+RED = "\033[91m"
+BOLD = "\033[1m"
+DIM = "\033[2m"
+RESET = "\033[0m"
+
+
+def show_confidence_details(result):
+    """Display detailed confidence score breakdown."""
+    confidence = result.confidence
+
+    print(f"\n  {BOLD}Confidence Score Breakdown{RESET}")
+    print(f"  {'-' * 40}")
+
+    # Overall score with bar
+    overall_pct = confidence.overall * 100
+    color = GREEN if confidence.overall >= 0.8 else (YELLOW if confidence.overall >= 0.5 else RED)
+    bar_len = int(overall_pct / 5)
+    bar = "#" * bar_len + "." * (20 - bar_len)
+    print(f"    {'Overall:'.ljust(20)} {color}{overall_pct:>6.1f}%{RESET}  {DIM}{bar}{RESET}")
+
+    # Field-level scores
+    if confidence.fields:
+        print()
+        print(f"    {BOLD}Per-Field Scores:{RESET}")
+        for fname, fscore in sorted(confidence.fields.items()):
+            fpct = fscore * 100
+            fcolor = GREEN if fscore >= 0.8 else (YELLOW if fscore >= 0.5 else RED)
+            print(f"      {fname:<18} {fcolor}{fpct:>6.1f}%{RESET}")
+
+    # Factors
+    if confidence.factors:
+        print()
+        print(f"    {BOLD}Factors:{RESET}")
+        for key, val in confidence.factors.items():
+            print(f"      {key.replace('_', ' ').title():<20} {CYAN}{val}{RESET}")
+
+    print()
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Run Candidate Data Transformer on custom inputs.")
+    parser = argparse.ArgumentParser(
+        description="Run Candidate Data Transformer on custom inputs.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python scripts/run_pipeline.py --files samples/sample_candidate.csv
+  python scripts/run_pipeline.py --files samples/sample_notes.txt --confidence
+  python scripts/run_pipeline.py --files samples/sample_candidate.json -c
+  python scripts/run_pipeline.py --files samples/sample_candidate.csv --projection companyb
+        """,
+    )
     parser.add_argument(
         "--files",
         nargs="+",
@@ -31,6 +83,12 @@ def main():
     parser.add_argument(
         "--validation",
         help="Path to validation schema JSON file."
+    )
+    parser.add_argument(
+        "--confidence", "-c",
+        action="store_true",
+        default=False,
+        help="Show detailed confidence score breakdown (field-level scores, factors, etc.)",
     )
     
     args = parser.parse_args()
@@ -104,6 +162,10 @@ def main():
         validation_schema=val_schema
     )
     
+    # Show confidence if requested
+    if args.confidence:
+        show_confidence_details(result)
+
     # Output result
     print("\n=== Result ===")
     print(json.dumps(result.to_dict(), indent=2))

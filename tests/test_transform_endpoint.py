@@ -150,3 +150,37 @@ class TestTransformEndpoint:
         data = response.json()
         assert data["data"].get("candidate_name") == "John Doe"
         assert "full_name" not in data["data"]
+
+    def test_gui_samples_endpoint(self) -> None:
+        """Verify the gui samples helper endpoint lists samples."""
+        response = self.client.get("/api/v1/gui/samples")
+        assert response.status_code == 200
+        data = response.json()
+        assert "samples" in data
+        assert isinstance(data["samples"], list)
+        if len(data["samples"]) > 0:
+            sample = data["samples"][0]
+            assert "name" in sample
+            assert "content" in sample
+            assert "source_type" in sample
+
+    def test_gui_templates_endpoint(self) -> None:
+        """Verify the gui templates helper endpoint lists config templates."""
+        response = self.client.get("/api/v1/gui/templates")
+        assert response.status_code == 200
+        data = response.json()
+        assert "templates" in data
+        assert isinstance(data["templates"], list)
+        if len(data["templates"]) > 0:
+            tpl = data["templates"][0]
+            assert "name" in tpl
+            assert "filename" in tpl
+            assert "content" in tpl
+
+    def test_gui_root_endpoint(self) -> None:
+        """Verify that accessing root / serves the HTML visual console."""
+        response = self.client.get("/")
+        assert response.status_code == 200
+        assert "text/html" in response.headers.get("content-type", "")
+        assert "Candidate Data Transformer" in response.text
+

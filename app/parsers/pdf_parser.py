@@ -4,6 +4,8 @@ PDF resume parser.
 Extracts text from PDF documents and uses an AI client to semantically
 extract structured candidate information. Handles the wide variety
 of resume layouts that rule-based extraction cannot reliably parse.
+Falls back to returning the raw extracted text when no AI client is
+available.
 """
 
 from __future__ import annotations
@@ -87,15 +89,19 @@ class PdfResumeParser(BaseParser):
     requires_ai: bool = True
     parser_version: str = "1.0.0"
 
-    def __init__(self, ai_client: AiClient) -> None:
+    def __init__(self, ai_client: AiClient | None = None) -> None:
         """
         Initialize the PDF resume parser.
 
         Args:
-            ai_client: AiClient instance for AI extraction.
+            ai_client: Optional AiClient instance. If None, falls back
+                       to returning raw extracted text.
         """
         self._ai_client = ai_client
-        logger.debug("PdfResumeParser initialized")
+        if ai_client is None:
+            logger.info("PdfResumeParser initialized without AI client (placeholder mode)")
+        else:
+            logger.debug("PdfResumeParser initialized")
 
     def parse(self, raw_data: str | bytes, **kwargs: Any) -> CanonicalCandidate:
         """
@@ -205,6 +211,9 @@ class PdfResumeParser(BaseParser):
         """
         Use AI client to extract structured data from resume text.
 
+        Falls back to a placeholder candidate with raw text when
+        no AI client is available.
+
         Args:
             text: Extracted PDF text.
             warnings: Warning accumulator.
@@ -212,6 +221,19 @@ class PdfResumeParser(BaseParser):
         Returns:
             CanonicalCandidate with extracted fields.
         """
+        if self._ai_client is None:
+            warnings.append(
+                ProcessingWarning(
+                    message="No AI client available; returning raw text as summary",
+                    source="pdf_parser",
+                    code="PLACEHOLDER_EXTRACTION",
+                    field="",
+                )
+            )
+            candidate = CanonicalCandidate()
+            candidate.summary = text[:2000]
+            return candidate
+
         try:
             data = self._ai_client.extract(text, RESUME_EXTRACTION_PROMPT)
             return self._map_response(data)

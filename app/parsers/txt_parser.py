@@ -3,11 +3,14 @@ Plain-text notes parser.
 
 Uses an AI client to extract structured candidate information from
 free-form recruiter notes or plain-text candidate profiles.
+Falls back to a placeholder keyword-based extraction when no AI client
+is available.
 """
 
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 from typing import Any
 
@@ -72,6 +75,10 @@ class TxtNotesParser(BaseParser):
     candidate fields. Designed for recruiter notes, interview summaries,
     and other unstructured text inputs.
 
+    Falls back to a placeholder keyword-based extraction when no AiClient
+    is provided, making the parser usable in CLI or testing contexts
+    without AI dependencies.
+
     Depends on an AiClient abstraction for AI extraction, enabling
     unit testing with MockGeminiClient.
     """
@@ -83,15 +90,19 @@ class TxtNotesParser(BaseParser):
     requires_ai: bool = True
     parser_version: str = "1.0.0"
 
-    def __init__(self, ai_client: AiClient) -> None:
+    def __init__(self, ai_client: AiClient | None = None) -> None:
         """
         Initialize the text notes parser.
 
         Args:
-            ai_client: AiClient instance for AI extraction.
+            ai_client: Optional AiClient instance. If None, falls back
+                       to placeholder keyword-based extraction.
         """
         self._ai_client = ai_client
-        logger.debug("TxtNotesParser initialized")
+        if ai_client is None:
+            logger.info("TxtNotesParser initialized without AI client (placeholder mode)")
+        else:
+            logger.debug("TxtNotesParser initialized with AI client")
 
     def parse(self, raw_data: str | bytes, **kwargs: Any) -> CanonicalCandidate:
         """
@@ -153,6 +164,9 @@ class TxtNotesParser(BaseParser):
         """
         Use AI client to extract structured data from text notes.
 
+        Falls back to placeholder keyword-based extraction when
+        no AI client is available.
+
         Args:
             text: Raw text content.
             warnings: Warning accumulator.
@@ -160,29 +174,108 @@ class TxtNotesParser(BaseParser):
         Returns:
             CanonicalCandidate with extracted fields.
         """
+        if self._ai_client is None:
+            warnings.append(
+                ProcessingWarning(
+                    message="No AI client available; using placeholder extraction",
+                    source="txt_parser",
+                    code="PLACEHOLDER_EXTRACTION",
+                    field="",
+                )
+            )
+            return self._placeholder_extract(text)
+
         try:
             data = self._ai_client.extract(text, NOTES_EXTRACTION_PROMPT)
             return self._map_response(data)
         except (ConnectionError, ValueError) as exc:
             warnings.append(
                 ProcessingWarning(
-                    message=f"AI extraction failed: {exc}",
+                    message=f"AI extraction failed; falling back to placeholder: {exc}",
                     source="txt_parser",
                     code="AI_EXTRACTION_ERROR",
                     field="",
                 )
             )
-            return CanonicalCandidate()
+            return self._placeholder_extract(text)
         except NotImplementedError:
             warnings.append(
                 ProcessingWarning(
-                    message="AI client not implemented; returning empty candidate",
+                    message="AI client not implemented; using placeholder extraction",
                     source="txt_parser",
                     code="AI_NOT_IMPLEMENTED",
                     field="",
                 )
             )
-            return CanonicalCandidate()
+            return self._placeholder_extract(text)
+
+    def _placeholder_extract(self, text: str) -> CanonicalCandidate:
+        """
+        Keyword-based placeholder extraction when no AI client is available.
+
+        Uses simple regex patterns to extract name, email, phone, and skills
+        from plain text. Provides basic functionality for CLI/demo use
+        without AI dependencies.
+
+        Args:
+            text: Raw text content.
+
+        Returns:
+            CanonicalCandidate with basic extracted fields.
+        """
+        candidate = CanonicalCandidate()
+
+        # Extract email
+        email_match = re.search(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}", text)
+        if email_match:
+            candidate.contact = ContactInformation(
+                emails=[Email(value=email_match.group(0), type="", is_primary=True)]
+            )
+
+        # Extract phone
+        phone_match = re.search(r"\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}", text)
+        if phone_match:
+            if candidate.contact is None:
+                candidate.contact = ContactInformation()
+            candidate.contact.phones = [Phone(value=phone_match.group(0), type="", is_primary=True)]
+
+        # Extract potential name from "Notes - Name" or "Name - Notes" pattern (avoid email matches)
+        lines = text.strip().splitlines()
+        name_match = re.search(r"(?:Recruiter\s+)?(?:Notes?|Candidate|Interview|Profile|Resume)?\s*[-:]\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)", text)
+        if name_match:
+            candidate.name = PersonName(display_name=name_match.group(1).strip())
+        elif lines:
+            first_line = lines[0].strip()
+            # Only use first line as name if it looks like a real name (2-4 words, title case)
+            words = first_line.split()
+            if 2 <= len(words) <= 4 and all(w[0].isupper() for w in words if w):
+                candidate.name = PersonName(display_name=first_line)
+
+        # Extract skills (look for "Skills: ..." or "skills: ..." lines)
+        skills_match = re.search(
+            r"(?:skills|technologies|expertise)[:\s]+(.+?)(?:\n|$)",
+            text, re.IGNORECASE,
+        )
+        if skills_match:
+            raw = skills_match.group(1)
+            for delim in ["|", ";", ","]:
+                if delim in raw:
+                    candidate.skills = [Skill(name=s.strip()) for s in raw.split(delim) if s.strip()]
+                    break
+            if not candidate.skills:
+                candidate.skills = [Skill(name=raw.strip())]
+
+        # Extract summary (first good descriptive sentence, not headers/labels)
+        for line in lines:
+            line = line.strip()
+            if (line and not line.startswith("Recruiter") and not line.startswith("Skills")
+                    and not line.startswith("Contact") and not line.startswith("Interviewed")
+                    and len(line) > 30 and not line.startswith("Notes") and not line.startswith("Candidate")):
+                candidate.summary = line
+                break
+
+        logger.info("Placeholder extraction completed for text (%d chars)", len(text))
+        return candidate
 
     def _map_response(self, data: dict[str, Any]) -> CanonicalCandidate:
         """
