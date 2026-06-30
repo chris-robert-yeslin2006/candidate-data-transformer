@@ -9,67 +9,88 @@
 - [x] Define coding guidelines
 - [x] Document design decisions
 - [x] Create AI workflow documentation
+- [x] Initialize git repository and push to GitHub
 
 ---
 
-## Day 2 — Core Models & Parsing
+## Day 2 — Core Models & Factory
 
 - [ ] Initialize Python project with `pyproject.toml`
 - [ ] Configure `ruff`, `mypy`, `pytest`
 - [ ] Define `CanonicalCandidate` Pydantic model
-- [ ] Define `Provenance` and `ConfidenceScore` wrappers
+- [ ] Define `Provenance` and `ConfidenceScore` models
+- [ ] Define `CanonicalCandidateWithMeta` wrapper
+- [ ] Define `PipelineResult` response model
 - [ ] Define `SourceType` enum
-- [ ] Implement `CandidateParser` protocol
-- [ ] Implement `ParserFactory`
+- [ ] Implement `BaseParser` abstract class
+- [ ] Implement `ParserFactory` with source-type dispatch
+- [ ] Write model and factory tests
+
+---
+
+## Day 3 — Structured Parsers
+
 - [ ] Implement `CsvParser`
-- [ ] Write model and parser tests
-- [ ] Implement `JsonParser`
-- [ ] Implement `XmlParser`
+- [ ] Implement `AtsJsonParser`
+- [ ] Map structured fields to canonical model
+- [ ] Handle missing/empty values
+- [ ] Write parser tests
 
 ---
 
-## Day 3 — AI Parsers
+## Day 4 — Gemini Integration
 
-- [ ] Integrate Gemini API client
-- [ ] Implement `PdfResumeParser`
-- [ ] Implement `TxtNotesParser`
-- [ ] Write extraction prompt for resumes
-- [ ] Write extraction prompt for notes
-- [ ] Write AI parser tests with sample documents
-- [ ] Handle extraction failures gracefully
+- [ ] Define `GeminiClient` abstract interface
+- [ ] Implement `RealGeminiClient`
+- [ ] Implement `MockGeminiClient`
+- [ ] Implement `PdfResumeParser` (PyMuPDF + Gemini)
+- [ ] Implement `TxtNotesParser` (Gemini)
+- [ ] Write extraction prompts for resumes and notes
+- [ ] Write parser tests with `MockGeminiClient`
 
 ---
 
-## Day 4 — Normalisation & Merge
+## Day 5 — Normalisation & Merge
 
+- [ ] Implement baseline confidence scoring
 - [ ] Implement phone normalizer
 - [ ] Implement email normalizer
 - [ ] Implement name normalizer
 - [ ] Implement address normalizer
 - [ ] Write normalizer tests
-- [ ] Implement conflict detection rules
-- [ ] Implement MergeEngine with source priority
-- [ ] Implement confidence scoring per field
-- [ ] Write merge and confidence tests
+- [ ] Implement `MergeEngine` with source priority + baseline confidence tiebreakers
+- [ ] Write merge engine tests
 
 ---
 
-## Day 5 — Projection & Validation
+## Day 6 — Refined Confidence & Projection
 
+- [ ] Implement refined confidence scoring
+- [ ] Factors: cross-source agreement, completeness, extraction quality
+- [ ] Write refined confidence tests
 - [ ] Define projection configuration schema
-- [ ] Implement field mapping and transforms
-- [ ] Implement ProjectionEngine
-- [ ] Implement output SchemaValidator
-- [ ] Write projection and validation tests
+- [ ] Implement `ProjectionService`
+- [ ] Write projection tests
+- [ ] Implement `ValidationService`
+- [ ] Write validation tests
 
 ---
 
-## Day 6 — API & Integration
+## Day 7 — PipelineService & API
 
+- [ ] Implement `PipelineService` orchestrator
+- [ ] Wire full pipeline end-to-end
+- [ ] Collect warnings from partial failures
+- [ ] Write PipelineService integration tests
 - [ ] Implement FastAPI application
 - [ ] Add `POST /transform` endpoint
-- [ ] Wire full pipeline end-to-end
 - [ ] Write API integration tests
-- [ ] Performance profiling
+
+---
+
+## Day 8 — Finalization
+
+- [ ] End-to-end pipeline tests with sample data
+- [ ] Performance profiling and optimisation
 - [ ] Error handling audit
-- [ ] Final documentation pass
+- [ ] Documentation pass

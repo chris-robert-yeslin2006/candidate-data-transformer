@@ -9,13 +9,14 @@ AI is used only where semantic understanding is required. All business rules rem
 | Component               | AI Used | Reason |
 |-------------------------|---------|--------|
 | CSV Parsing             | ❌       | Structured format; deterministic parsing is sufficient |
-| JSON / XML Parsing      | ❌       | Structured formats; standard library parsing is sufficient |
+| ATS JSON Parsing        | ❌       | Structured format; standard library parsing is sufficient |
 | Resume Extraction       | ✅ Gemini | Resume layouts vary widely and benefit from semantic extraction |
 | TXT Notes Parsing       | ✅ Gemini | Free-form text is easier to interpret with an LLM |
 | Phone Normalization     | ❌       | Existing libraries and regex are more reliable than AI |
 | Email Validation        | ❌       | Regex and validators are deterministic and well-understood |
 | Merge Engine            | ❌       | Business rules must be explainable and repeatable |
-| Confidence Scoring      | ❌       | Confidence is based on explicit, deterministic rules |
+| Baseline Confidence     | ❌       | Confidence is based on explicit source-type rules |
+| Refined Confidence      | ❌       | Confidence is based on deterministic post-merge analysis |
 | Projection Engine       | ❌       | Configuration-driven logic should remain deterministic |
 | Schema Validation       | ❌       | Validation rules are fully specifiable in Pydantic schemas |
 
