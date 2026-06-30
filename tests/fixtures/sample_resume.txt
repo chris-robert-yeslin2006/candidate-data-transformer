@@ -1,0 +1,6 @@
+Jane Smith
+jane.smith@example.com
++1-555-0200
+
+Experienced software engineer with 5 years in Python.
+Previously at Acme Corp as a Senior Developer.
