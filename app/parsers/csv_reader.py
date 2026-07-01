@@ -114,3 +114,18 @@ class CSVReader:
             )
 
         return reader, tuple(headers)
+
+
+class TSVReader(CSVReader):
+    """
+    TSV (Tab-Separated Values) file reader.
+
+    Identical to CSVReader but defaults to tab delimiter.
+    Reads TSV content and produces a list of CSVRecord objects.
+
+    Args:
+        delimiter: Single-character field delimiter (default: '\\t').
+    """
+
+    def __init__(self, delimiter: str = "\t") -> None:
+        super().__init__(delimiter=delimiter)

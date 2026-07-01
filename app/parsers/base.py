@@ -9,27 +9,21 @@ Subclasses must define a ``source_type`` class attribute that
 identifies the data source this parser handles. This attribute
 is used by ParserRegistry for automatic parser discovery and
 registration.
-
-Future evolution:
-    The parse signature will eventually become:
-        parse(context: ParserContext) -> ParseResult
-
-    ParserContext bundles raw_data, source metadata, AI client,
-    and configuration. ParseResult carries the candidate plus
-    warnings, parser metadata, and processing statistics.
-    These types are available now for opt-in adoption but the
-    interface migration is deferred to a later phase.
 """
 
 from __future__ import annotations
 
 import logging
+import time
+from datetime import datetime
 from abc import ABC, abstractmethod
 from typing import Any
 
-from app.domain.models import CanonicalCandidate
+from app.domain.models import CanonicalCandidate, ProcessingMetadata
 from app.domain.models.provenance import SourceType
+from app.parsers.context import ParserContext
 from app.parsers.metadata import ParserMetadata
+from app.parsers.result import ParseResult
 
 logger = logging.getLogger(__name__)
 
@@ -99,3 +93,43 @@ class BaseParser(ABC):
             ParsingError: If the input cannot be parsed.
         """
         ...
+
+    def parse_with_context(self, context: ParserContext) -> ParseResult:
+        """
+        Parse input from a ParserContext and return a ParseResult.
+
+        The default implementation delegates to ``parse()`` for
+        backward compatibility. Subclasses should override this
+        method to return richer ParseResult metadata.
+
+        Args:
+            context: ParserContext with raw_data, source metadata,
+                     ai_client, and configuration.
+
+        Returns:
+            ParseResult wrapping the candidate, warnings, and
+            parsing metadata.
+        """
+        start = time.time()
+        candidate = self.parse(
+            context.raw_data,
+            source_id=context.source_id,
+            **context.config,
+        )
+        duration = time.time() - start
+
+        return ParseResult(
+            candidate=candidate,
+            metadata=ProcessingMetadata(
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+                parser_version=self.parser_version,
+                source_types=[str(context.source_type)],
+                processing_duration=duration,
+                warnings=[],
+            ),
+            warnings=[],
+            parser_version=self.parser_version,
+            source_types=[str(context.source_type)],
+            processing_duration=duration,
+        )

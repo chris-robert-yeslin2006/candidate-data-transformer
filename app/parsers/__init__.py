@@ -29,11 +29,14 @@ Reader / Mapper Architecture (Phase 5):
 from app.parsers.ats_json_parser import AtsJsonParser
 from app.parsers.base import BaseParser
 from app.parsers.candidate_mapper import CandidateMapper
+from app.parsers.column_rule import ColumnRule
+from app.parsers.context import ParserContext
 from app.parsers.csv_parser import CsvParser
-from app.parsers.csv_reader import CSVReader
+from app.parsers.csv_reader import CSVReader, TSVReader
 from app.parsers.csv_record import CSVRecord
 from app.parsers.pdf_parser import PdfResumeParser
 from app.parsers.registry import ParserFactory, ParserRegistry
+from app.parsers.result import ParseResult
 from app.parsers.txt_parser import TxtNotesParser
 
 # Default registry pre-populated with all built-in parsers.
@@ -51,12 +54,16 @@ __all__ = [
     "AtsJsonParser",
     "BaseParser",
     "CandidateMapper",
+    "ColumnRule",
     "CSVReader",
     "CSVRecord",
     "CsvParser",
+    "ParserContext",
     "ParserFactory",
     "ParserRegistry",
+    "ParseResult",
     "PdfResumeParser",
+    "TSVReader",
     "TxtNotesParser",
     "default_registry",
 ]

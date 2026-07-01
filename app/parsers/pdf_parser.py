@@ -11,6 +11,7 @@ available.
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime
 from typing import Any
 
@@ -31,6 +32,8 @@ from app.domain.models.person_name import PersonName
 from app.domain.models.provenance import SourceType
 from app.domain.models.warning import Warning as ProcessingWarning
 from app.parsers.base import BaseParser
+from app.parsers.context import ParserContext
+from app.parsers.result import ParseResult
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +156,69 @@ class PdfResumeParser(BaseParser):
         )
 
         return candidate
+
+    def parse_with_context(self, context: ParserContext) -> ParseResult:
+        """
+        Parse a PDF resume from a ParserContext into a ParseResult.
+
+        Args:
+            context: ParserContext with PDF bytes and config.
+
+        Returns:
+            ParseResult wrapping the candidate and warnings.
+        """
+        start = time.time()
+        if context.ai_client is not None:
+            self._ai_client = context.ai_client
+
+        warnings: list[ProcessingWarning] = []
+
+        text = self._extract_text(context.raw_data, warnings)
+
+        if not text.strip():
+            warnings.append(
+                ProcessingWarning(
+                    message="PDF contains no extractable text",
+                    source="pdf_parser",
+                    code="EMPTY_PDF",
+                    field="",
+                )
+            )
+            duration = time.time() - start
+            return ParseResult(
+                candidate=CanonicalCandidate(),
+                metadata=ProcessingMetadata(
+                    created_at=datetime.now(),
+                    updated_at=datetime.now(),
+                    parser_version=self.parser_version,
+                    source_types=[str(context.source_type)],
+                    processing_duration=duration,
+                    warnings=warnings,
+                ),
+                warnings=warnings,
+                parser_version=self.parser_version,
+                source_types=[str(context.source_type)],
+                processing_duration=duration,
+            )
+
+        candidate = self._ai_extract(text, warnings)
+
+        duration = time.time() - start
+        return ParseResult(
+            candidate=candidate,
+            metadata=ProcessingMetadata(
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+                parser_version=self.parser_version,
+                source_types=[str(context.source_type)],
+                processing_duration=duration,
+                warnings=warnings,
+            ),
+            warnings=warnings,
+            parser_version=self.parser_version,
+            source_types=[str(context.source_type)],
+            processing_duration=duration,
+        )
 
     def _extract_text(
         self,

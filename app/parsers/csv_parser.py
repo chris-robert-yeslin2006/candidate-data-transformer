@@ -9,6 +9,7 @@ CSV parsing or mapping logic.
 from __future__ import annotations
 
 import logging
+import time
 from datetime import datetime
 from typing import Any
 
@@ -21,7 +22,9 @@ from app.parsers.candidate_mapper import (
     DEFAULT_COLUMN_MAPPING,
     CandidateMapper,
 )
+from app.parsers.context import ParserContext
 from app.parsers.csv_reader import CSVReader
+from app.parsers.result import ParseResult
 
 logger = logging.getLogger(__name__)
 
@@ -109,3 +112,44 @@ class CsvParser(BaseParser):
         )
 
         return candidate
+
+    def parse_with_context(self, context: ParserContext) -> ParseResult:
+        """
+        Parse CSV content from a ParserContext into a ParseResult.
+
+        Args:
+            context: ParserContext with CSV data and config.
+
+        Returns:
+            ParseResult wrapping the candidate and warnings.
+        """
+        start = time.time()
+        column_mapping = context.config.get("column_mapping", self._column_mapping)
+        source_id = context.source_id
+
+        records = self._reader.read(context.raw_data)
+        if not records:
+            raise ParsingError("CSV file is empty")
+
+        candidate, warnings = self._mapper.map(
+            records[0],
+            column_mapping=column_mapping,
+            source_id=source_id,
+        )
+
+        duration = time.time() - start
+        return ParseResult(
+            candidate=candidate,
+            metadata=ProcessingMetadata(
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+                parser_version=self.parser_version,
+                source_types=[str(context.source_type)],
+                processing_duration=duration,
+                warnings=warnings,
+            ),
+            warnings=warnings,
+            parser_version=self.parser_version,
+            source_types=[str(context.source_type)],
+            processing_duration=duration,
+        )

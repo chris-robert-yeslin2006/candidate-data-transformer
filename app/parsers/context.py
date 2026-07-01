@@ -5,13 +5,9 @@ Carries all runtime context a parser needs during a single
 parse invocation: input metadata, shared services, logging,
 and configuration.
 
-The interface is designed for future adoption. Parsers currently
-receive ``(raw_data, **kwargs)``. In a later phase, the signature
-will evolve to ``parse(context: ParserContext) -> ParseResult``.
-
-This model is available now so parsers can start accepting it
-optionally, but the migration is deferred to avoid unnecessary
-churn during early phases.
+Every parser's ``parse_with_context()`` method accepts a
+ParserContext instead of scattered kwargs, keeping the parser
+interface stable as new context fields are added.
 """
 
 from __future__ import annotations
@@ -26,6 +22,7 @@ from app.domain.models.provenance import SourceType
 
 
 class ParserContext(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     """
     Runtime context for a single parse invocation.
 
